@@ -37,6 +37,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
 const charts = {};
+// Colours are assigned by each device's position in the full device list,
+// so a device keeps its colour on both graphs and across range changes.
+const PALETTE = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
 const UNITS = { temperature: '°C', humidity: '%' };
 
 function makeChart(kind) {
@@ -57,11 +61,18 @@ function makeChart(kind) {
 async function load() {
   const hours = document.getElementById('range').value;
   const error = document.getElementById('error');
-  let readings;
+  let readings, colours;
   try {
-    const res = await fetch('/api/readings?hours=' + hours);
-    if (!res.ok) throw new Error(await res.text());
-    readings = await res.json();
+    const [readingsRes, devicesRes] = await Promise.all([
+      fetch('/api/readings?hours=' + hours),
+      fetch('/api/devices'),
+    ]);
+    for (const res of [readingsRes, devicesRes]) {
+      if (!res.ok) throw new Error(await res.text());
+    }
+    readings = await readingsRes.json();
+    const devices = await devicesRes.json();
+    colours = new Map(devices.map((d, i) => [d.id, PALETTE[i % PALETTE.length]]));
     error.textContent = '';
   } catch (e) {
     error.textContent = 'Failed to load readings: ' + e.message;
@@ -72,7 +83,12 @@ async function load() {
     const byDevice = new Map();
     for (const r of readings) {
       if (r.kind !== kind) continue;
-      if (!byDevice.has(r.deviceId)) byDevice.set(r.deviceId, { label: r.device, data: [] });
+      if (!byDevice.has(r.deviceId)) byDevice.set(r.deviceId, {
+        label: r.device,
+        data: [],
+        borderColor: colours.get(r.deviceId),
+        backgroundColor: colours.get(r.deviceId),
+      });
       byDevice.get(r.deviceId).data.push({ x: r.t, y: r.v });
     }
     // Extend each line from its last reading to now with a dashed segment,
