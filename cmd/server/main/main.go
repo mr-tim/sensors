@@ -38,7 +38,6 @@ func main() {
 		log.Fatalf("loading token store: %v", err)
 	}
 	client := ewelink.NewClient(appID, appSecret)
-	server := api.NewServer(client, store, apiAddr)
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
@@ -49,6 +48,15 @@ func main() {
 		log.Fatalf("connecting to postgres (is `docker compose up -d` running?): %v", err)
 	}
 	defer db.Close()
+
+	refreshDevices := func(ctx context.Context) (int, error) {
+		tok := store.Get()
+		if !tok.Valid() {
+			return 0, api.ErrNotLoggedIn
+		}
+		return syncDevices(ctx, client, tok, db)
+	}
+	server := api.NewServer(client, store, db, refreshDevices, apiAddr)
 
 	if store.Get().Valid() {
 		log.Printf("using saved token from %s", tokenFile)
@@ -239,7 +247,6 @@ func connectAndListen(ctx context.Context, client *ewelink.Client, tok *token.To
 	}
 	log.Printf("ws: connecting to %s", wsURL)
 	return client.Listen(ctx, wsURL, tok.AccessToken, apiKey, func(msg []byte) {
-		log.Printf("ws: %s", msg)
 		if update, ok := ewelink.ParseTemperatureUpdate(msg); ok {
 			storeReading(ctx, db, "ws", readings.Reading{
 				DeviceID:   update.DeviceID,

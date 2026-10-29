@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eWeLink sensors</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 16px; }
+  header { display: flex; align-items: center; justify-content: space-between; }
+  h1 { font-size: 1.4rem; }
+  nav a { margin-right: 1rem; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; }
+  .chart { position: relative; height: 320px; }
+  #error { color: #b00020; }
+</style>
+</head>
+<body>
+<nav><a href="/">History</a><a href="/devices">Devices</a></nav>
+<header>
+  <h1>Sensor history</h1>
+  <label>Range
+    <select id="range">
+      <option value="6">6 hours</option>
+      <option value="24" selected>24 hours</option>
+      <option value="168">7 days</option>
+      <option value="720">30 days</option>
+    </select>
+  </label>
+</header>
+<p id="error"></p>
+<h2>Temperature (°C)</h2>
+<div class="chart"><canvas id="temperature"></canvas></div>
+<h2>Humidity (%)</h2>
+<div class="chart"><canvas id="humidity"></canvas></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script>
+const charts = {};
+const UNITS = { temperature: '°C', humidity: '%' };
+
+function makeChart(kind) {
+  return new Chart(document.getElementById(kind), {
+    type: 'line',
+    data: { datasets: [] },
+    options: {
+      maintainAspectRatio: false,
+      parsing: false,
+      animation: false,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      elements: { point: { radius: 0, hitRadius: 8 }, line: { borderWidth: 2 } },
+      scales: { x: { type: 'time' } },
+    },
+  });
+}
+
+async function load() {
+  const hours = document.getElementById('range').value;
+  const error = document.getElementById('error');
+  let readings;
+  try {
+    const res = await fetch('/api/readings?hours=' + hours);
+    if (!res.ok) throw new Error(await res.text());
+    readings = await res.json();
+    error.textContent = '';
+  } catch (e) {
+    error.textContent = 'Failed to load readings: ' + e.message;
+    return;
+  }
+
+  for (const kind of ['temperature', 'humidity']) {
+    const byDevice = new Map();
+    for (const r of readings) {
+      if (r.kind !== kind) continue;
+      if (!byDevice.has(r.deviceId)) byDevice.set(r.deviceId, { label: r.device, data: [] });
+      byDevice.get(r.deviceId).data.push({ x: r.t, y: r.v });
+    }
+    // Extend each line from its last reading to now with a dashed segment,
+    // so the current value is easy to read off the right-hand edge.
+    const now = Date.now();
+    const datasets = [...byDevice.values()];
+    for (const ds of datasets) {
+      const last = ds.data[ds.data.length - 1];
+      ds.label += ` (${last.y.toFixed(1)}${UNITS[kind]})`;
+      ds.data.push({ x: now, y: last.y });
+      ds.segment = {
+        borderDash: ctx => ctx.p1DataIndex === ds.data.length - 1 ? [6, 6] : undefined,
+      };
+    }
+    charts[kind].data.datasets = datasets;
+    charts[kind].update();
+  }
+}
+
+for (const kind of ['temperature', 'humidity']) charts[kind] = makeChart(kind);
+document.getElementById('range').addEventListener('change', load);
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
