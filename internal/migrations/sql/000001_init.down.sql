@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS devices;
+DROP TABLE IF EXISTS readings;
+DROP TYPE IF EXISTS reading_kind;

@@ -14,6 +14,7 @@ import (
 	"github.com/mr-tim/ewelink/internal/api"
 	"github.com/mr-tim/ewelink/internal/config"
 	"github.com/mr-tim/ewelink/internal/ewelink"
+	"github.com/mr-tim/ewelink/internal/migrations"
 	"github.com/mr-tim/ewelink/internal/readings"
 	"github.com/mr-tim/ewelink/internal/token"
 )
@@ -50,9 +51,12 @@ func main() {
 	}
 	client := ewelink.NewClient(cfg.EwelinkAppID, cfg.EwelinkAppSecret)
 
+	if err := migrations.Up(cfg.DatabaseURL); err != nil {
+		log.Fatalf("migrating database: %v", err)
+	}
 	db, err := readings.NewStore(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("connecting to postgres (is `docker compose up -d` running?): %v", err)
+		log.Fatalf("connecting to postgres: %v", err)
 	}
 	defer db.Close()
 

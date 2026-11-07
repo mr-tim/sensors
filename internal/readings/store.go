@@ -3,7 +3,6 @@ package readings
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -11,33 +10,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const schema = `
-DO $$ BEGIN
-	CREATE TYPE reading_kind AS ENUM ('temperature', 'humidity');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-CREATE TABLE IF NOT EXISTS readings (
-	device_id   text         NOT NULL,
-	kind        reading_kind NOT NULL,
-	recorded_at timestamptz  NOT NULL,
-	value       numeric(6,2) NOT NULL,
-	PRIMARY KEY (device_id, kind, recorded_at)
-);
-
-CREATE TABLE IF NOT EXISTS devices (
-	device_id     text        PRIMARY KEY,
-	name          text        NOT NULL,
-	product_model text        NOT NULL DEFAULT '',
-	details       jsonb       NOT NULL,
-	updated_at    timestamptz NOT NULL DEFAULT now()
-)`
-
 // ErrNotFound is returned when a requested record doesn't exist.
 var ErrNotFound = errors.New("not found")
 
 // Kind is the quantity a reading measures; it must match the
-// reading_kind enum in the schema.
+// reading_kind enum in the migrations.
 type Kind string
 
 const (
@@ -64,10 +41,6 @@ func NewStore(ctx context.Context, dsn string) (*Store, error) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, err
-	}
-	if _, err := pool.Exec(ctx, schema); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("creating schema: %w", err)
 	}
 	return &Store{pool: pool}, nil
 }
