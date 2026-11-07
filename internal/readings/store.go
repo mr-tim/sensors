@@ -18,8 +18,9 @@ var ErrNotFound = errors.New("not found")
 type Kind string
 
 const (
-	Temperature Kind = "temperature"
-	Humidity    Kind = "humidity"
+	Temperature       Kind = "temperature"
+	Humidity          Kind = "humidity"
+	TargetTemperature Kind = "target_temperature" // a thermostat's set point
 )
 
 type Reading struct {

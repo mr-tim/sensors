@@ -100,7 +100,11 @@ type devicesBody struct {
 	Detail  *deviceDetail
 }
 
-var units = map[readings.Kind]string{readings.Temperature: "°C", readings.Humidity: "%"}
+var units = map[readings.Kind]string{
+	readings.Temperature:       "°C",
+	readings.Humidity:          "%",
+	readings.TargetTemperature: "°C",
+}
 
 // loadDevicesBody loads the device list with selectedID shown in detail,
 // or the first device if selectedID is empty. It returns
@@ -150,7 +154,7 @@ func (s *Server) loadDevicesBody(r *http.Request, selectedID string) (devicesBod
 	}
 	for _, l := range latest {
 		detail.Readings = append(detail.Readings, readingView{
-			Kind:  string(l.Kind),
+			Kind:  strings.ReplaceAll(string(l.Kind), "_", " "),
 			Value: fmt.Sprintf("%.1f%s", l.Value, units[l.Kind]),
 			At:    l.RecordedAt.UTC(),
 		})

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/mr-tim/sensors/internal/config"
 	"github.com/mr-tim/sensors/internal/ewelink"
 	"github.com/mr-tim/sensors/internal/migrations"
+	"github.com/mr-tim/sensors/internal/neohub"
 	"github.com/mr-tim/sensors/internal/readings"
 	"github.com/mr-tim/sensors/internal/token"
 )
@@ -83,6 +85,12 @@ func main() {
 	go runRefresher(ctx, client, store)
 	go runDeviceSync(ctx, client, store, db)
 	go runWsListener(ctx, client, store, db)
+	if cfg.NeoHubToken != "" {
+		hub := neohub.NewClient(cfg.NeoHubHost, cfg.NeoHubPort, cfg.NeoHubToken)
+		go runNeoHubPoller(ctx, hub, db, cfg.NeoHubPollInterval)
+	} else {
+		log.Println("neohub: NEOHUB_TOKEN not set, not monitoring thermostats")
+	}
 
 	<-ctx.Done()
 	log.Println("shutting down")
@@ -275,4 +283,78 @@ func connectAndListen(ctx context.Context, client *ewelink.Client, tok *token.To
 			})
 		}
 	})
+}
+
+// neoHubDeviceID namespaces NeoHub zones so they can't collide with eWeLink
+// device IDs in the shared devices and readings tables.
+func neoHubDeviceID(zoneID int) string {
+	return fmt.Sprintf("neohub:%d", zoneID)
+}
+
+// runNeoHubPoller records every thermostat's temperature and set point
+// each interval. The hub has no push API, so it has to be polled. Failures
+// are logged and retried on the next tick.
+func runNeoHubPoller(ctx context.Context, hub *neohub.Client, db *readings.Store, interval time.Duration) {
+	log.Printf("neohub: polling %s every %s", hub.Host, interval)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		n, err := pollNeoHub(ctx, hub, db)
+		switch {
+		case ctx.Err() != nil:
+			return
+		case err != nil:
+			log.Printf("neohub: poll failed: %v", err)
+		default:
+			log.Printf("neohub: recorded %d thermostats", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+// pollNeoHub stores one round of readings, returning how many thermostats
+// were recorded. Offline devices, timeclocks and devices without a usable
+// temperature are skipped.
+func pollNeoHub(ctx context.Context, hub *neohub.Client, db *readings.Store) (int, error) {
+	zones, err := hub.Zones(ctx)
+	if err != nil {
+		return 0, err
+	}
+	now := time.Now()
+	var devices []readings.Device
+	var recorded []neohub.Zone
+	for _, z := range zones {
+		if !z.HasTemperature() {
+			continue
+		}
+		devices = append(devices, readings.Device{
+			DeviceID:     neoHubDeviceID(z.ID),
+			Name:         z.Name,
+			ProductModel: "Heatmiser NeoStat",
+			Details:      z.Raw,
+		})
+		recorded = append(recorded, z)
+	}
+	if len(devices) == 0 {
+		return 0, nil
+	}
+	if err := db.UpsertDevices(ctx, devices); err != nil {
+		return 0, fmt.Errorf("storing devices: %w", err)
+	}
+	for _, z := range recorded {
+		id := neoHubDeviceID(z.ID)
+		storeReading(ctx, db, "neohub", readings.Reading{
+			DeviceID: id, Kind: readings.Temperature, RecordedAt: now, Value: *z.Temperature,
+		})
+		if z.Target != nil {
+			storeReading(ctx, db, "neohub", readings.Reading{
+				DeviceID: id, Kind: readings.TargetTemperature, RecordedAt: now, Value: *z.Target,
+			})
+		}
+	}
+	return len(recorded), nil
 }
