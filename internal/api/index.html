@@ -3,23 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>eWeLink sensors</title>
-<style>
-  body { font-family: system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 16px; }
-  header { display: flex; align-items: center; justify-content: space-between; }
-  h1 { font-size: 1.4rem; }
-  nav a { margin-right: 1rem; }
-  h2 { font-size: 1.1rem; margin-top: 2rem; }
-  .chart { position: relative; height: 320px; }
-  #error { color: #b00020; }
-</style>
+<title>sensors</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.5"></script>
 </head>
-<body>
-<nav><a href="/">History</a><a href="/devices">Devices</a></nav>
-<header>
-  <h1>Sensor history</h1>
+<body class="mx-auto max-w-4xl p-4 font-sans">
+<nav class="space-x-4"><a class="text-blue-700 hover:underline" href="/">History</a><a class="text-blue-700 hover:underline" href="/devices">Devices</a></nav>
+<header class="flex items-center justify-between">
+  <h1 class="text-2xl font-semibold">Sensor history</h1>
   <label>Range
-    <select id="range">
+    <select id="range" class="ml-2 rounded border border-gray-300 px-2 py-1">
       <option value="6">6 hours</option>
       <option value="24" selected>24 hours</option>
       <option value="168">7 days</option>
@@ -27,11 +19,11 @@
     </select>
   </label>
 </header>
-<p id="error"></p>
-<h2>Temperature (°C)</h2>
-<div class="chart"><canvas id="temperature"></canvas></div>
-<h2>Humidity (%)</h2>
-<div class="chart"><canvas id="humidity"></canvas></div>
+<p id="error" class="text-red-700"></p>
+<h2 class="mt-8 text-lg font-semibold">Temperature (°C)</h2>
+<div class="relative h-80"><canvas id="temperature"></canvas></div>
+<h2 class="mt-8 text-lg font-semibold">Humidity (%)</h2>
+<div class="relative h-80"><canvas id="humidity"></canvas></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>

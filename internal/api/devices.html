@@ -3,42 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>eWeLink devices</title>
-<style>
-  body { font-family: system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 16px; }
-  nav a { margin-right: 1rem; }
-  header { display: flex; align-items: center; justify-content: space-between; }
-  h1 { font-size: 1.4rem; }
-  h2 { font-size: 1.1rem; margin-top: 1.5rem; }
-  .layout { display: flex; gap: 24px; align-items: flex-start; }
-  #list { list-style: none; margin: 0; padding: 0; width: 240px; flex: none; border: 1px solid #ccc; border-radius: 6px; }
-  #list li { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; }
-  #list li:last-child { border-bottom: 0; }
-  #list li:hover { background: #f3f3f3; }
-  #list li.selected { background: #e3edff; font-weight: 600; }
-  #list small { display: block; color: #666; font-weight: normal; }
-  #detail { flex: 1; min-width: 0; }
-  table { border-collapse: collapse; }
-  td, th { text-align: left; padding: 4px 16px 4px 0; }
-  pre { background: #f6f6f6; padding: 12px; border-radius: 6px; overflow: auto; font-size: 0.85rem; }
-  .muted { color: #666; }
-  #error { color: #b00020; }
-  @media (max-width: 640px) { .layout { flex-direction: column; } #list { width: 100%; } }
-</style>
+<title>devices</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.5"></script>
 </head>
-<body>
-<nav><a href="/">History</a><a href="/devices">Devices</a></nav>
-<header>
-  <h1>Devices</h1>
-  <button id="refresh" type="button">Refresh from eWeLink</button>
+<body class="mx-auto max-w-4xl p-4 font-sans">
+<nav class="space-x-4"><a class="text-blue-700 hover:underline" href="/">History</a><a class="text-blue-700 hover:underline" href="/devices">Devices</a></nav>
+<header class="flex items-center justify-between">
+  <h1 class="text-2xl font-semibold">Devices</h1>
+  <button id="refresh" type="button" class="rounded border border-gray-300 px-3 py-1 hover:bg-gray-100 disabled:opacity-50">Refresh from eWeLink</button>
 </header>
-<p id="error"></p>
-<div class="layout">
-  <ul id="list"></ul>
-  <div id="detail"><p class="muted">Select a device.</p></div>
+<p id="error" class="text-red-700"></p>
+<div class="flex flex-col items-start gap-6 sm:flex-row">
+  <ul id="list" class="m-0 w-full flex-none list-none rounded-md border border-gray-300 p-0 sm:w-60"></ul>
+  <div id="detail" class="w-full min-w-0 flex-1"><p class="text-gray-600">Select a device.</p></div>
 </div>
 
 <script>
+const H2 = 'mt-6 mb-2 text-lg font-semibold';
 const UNITS = { temperature: '°C', humidity: '%' };
 const list = document.getElementById('list');
 const detail = document.getElementById('detail');
@@ -53,7 +34,7 @@ function el(tag, text, cls) {
 
 function row(label, value) {
   const tr = document.createElement('tr');
-  tr.append(el('th', label), el('td', value));
+  tr.append(el('th', label, 'py-1 pr-4 text-left'), el('td', value, 'py-1 pr-4 text-left'));
   return tr;
 }
 
@@ -64,7 +45,7 @@ async function fetchJSON(url) {
 }
 
 function markSelected(id) {
-  for (const li of list.children) li.classList.toggle('selected', li.dataset.id === id);
+  for (const li of list.children) li.toggleAttribute('data-selected', li.dataset.id === id);
 }
 
 async function showDevice(id) {
@@ -93,12 +74,12 @@ async function showDevice(id) {
   }
 
   detail.replaceChildren(
-    el('h2', d.name),
+    el('h2', d.name, H2),
     info,
-    el('h2', 'Latest readings'),
-    d.readings.length ? readings : el('p', 'No readings recorded.', 'muted'),
-    el('h2', 'Details'),
-    el('pre', JSON.stringify(d.details, null, 2)),
+    el('h2', 'Latest readings', H2),
+    d.readings.length ? readings : el('p', 'No readings recorded.', 'text-gray-600'),
+    el('h2', 'Details', H2),
+    el('pre', JSON.stringify(d.details, null, 2), 'overflow-auto rounded-md bg-gray-100 p-3 text-sm'),
   );
 }
 
@@ -112,9 +93,9 @@ async function loadList() {
   const devices = await fetchJSON('/api/devices');
   list.replaceChildren();
   for (const d of devices) {
-    const li = el('li', d.name);
+    const li = el('li', d.name, 'cursor-pointer border-b border-gray-200 px-3 py-2 last:border-b-0 hover:bg-gray-100 data-selected:bg-blue-100 data-selected:font-semibold');
     li.dataset.id = d.id;
-    li.append(el('small', d.productModel || d.id));
+    li.append(el('small', d.productModel || d.id, 'block font-normal text-gray-600'));
     li.addEventListener('click', () => select(d.id));
     list.append(li);
   }
