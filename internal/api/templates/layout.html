@@ -1,0 +1,35 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<!-- Swap error responses too: the server sends them as fragments aimed at #error. -->
+<meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.11/dist/htmx.min.js"></script>
+</head>
+<body class="mx-auto max-w-4xl p-4 font-sans">
+<nav class="space-x-4">
+  <a class="text-blue-700 hover:underline {{if eq .Active "history"}}font-semibold{{end}}" href="/">History</a>
+  <a class="text-blue-700 hover:underline {{if eq .Active "devices"}}font-semibold{{end}}" href="/devices">Devices</a>
+</nav>
+{{template "header" .}}
+<p id="error" class="text-red-700"></p>
+{{template "content" .}}
+<script>
+// Show timestamps in the viewer's timezone and locale.
+function localiseTimes(root) {
+  for (const t of root.querySelectorAll('time[datetime]')) {
+    t.textContent = new Date(t.getAttribute('datetime')).toLocaleString();
+  }
+}
+localiseTimes(document);
+document.body.addEventListener('htmx:afterSwap', e => {
+  localiseTimes(e.detail.target);
+  if (e.detail.target.id !== 'error') document.getElementById('error').textContent = '';
+});
+</script>
+{{template "scripts" .}}
+</body>
+</html>{{end}}

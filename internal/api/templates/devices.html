@@ -1,0 +1,16 @@
+{{define "header"}}
+<header class="flex items-center justify-between">
+  <h1 class="text-2xl font-semibold">Devices</h1>
+  <button type="button" class="group rounded border border-gray-300 px-3 py-1 hover:bg-gray-100 disabled:opacity-50"
+          hx-post="/devices/refresh" hx-target="#devices-body" hx-swap="innerHTML" hx-disabled-elt="this">
+    <span class="group-[.htmx-request]:hidden">Refresh from eWeLink</span>
+    <span class="hidden group-[.htmx-request]:inline">Refreshing…</span>
+  </button>
+</header>
+{{end}}
+
+{{define "content"}}
+<div id="devices-body">{{template "devices_body" .Body}}</div>
+{{end}}
+
+{{define "scripts"}}{{end}}

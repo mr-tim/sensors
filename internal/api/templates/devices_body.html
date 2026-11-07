@@ -1,0 +1,41 @@
+{{define "devices_body"}}
+<div class="flex flex-col items-start gap-6 sm:flex-row">
+  <ul class="m-0 w-full flex-none list-none rounded-md border border-gray-300 p-0 sm:w-60">
+    {{range .Devices}}
+    <li class="cursor-pointer border-b border-gray-200 px-3 py-2 last:border-b-0 hover:bg-gray-100 data-selected:bg-blue-100 data-selected:font-semibold"
+        {{if .Selected}}data-selected{{end}}
+        hx-get="/devices/{{.ID}}" hx-target="#devices-body" hx-swap="innerHTML" hx-push-url="true">
+      {{.Name}}
+      <small class="block font-normal text-gray-600">{{or .ProductModel .ID}}</small>
+    </li>
+    {{end}}
+  </ul>
+  <div class="w-full min-w-0 flex-1">
+    {{with .Detail}}{{template "device_detail" .}}{{else}}<p class="text-gray-600">Select a device.</p>{{end}}
+  </div>
+</div>
+{{end}}
+
+{{define "device_detail"}}
+<h2 class="mt-6 mb-2 text-lg font-semibold">{{.Name}}</h2>
+<table>
+  <tr><th class="py-1 pr-4 text-left">Device ID</th><td class="py-1 pr-4 text-left">{{.ID}}</td></tr>
+  <tr><th class="py-1 pr-4 text-left">Model</th><td class="py-1 pr-4 text-left">{{or .ProductModel "—"}}</td></tr>
+  <tr><th class="py-1 pr-4 text-left">Details refreshed</th><td class="py-1 pr-4 text-left"><time datetime="{{.RefreshedAt.Format "2006-01-02T15:04:05Z07:00"}}">{{.RefreshedAt.Format "2006-01-02 15:04:05 MST"}}</time></td></tr>
+</table>
+<h2 class="mt-6 mb-2 text-lg font-semibold">Latest readings</h2>
+{{if .Readings}}
+<table>
+  {{range .Readings}}
+  <tr>
+    <th class="py-1 pr-4 text-left">{{.Kind}}</th>
+    <td class="py-1 pr-4 text-left">{{.Value}}  ·  <time datetime="{{.At.Format "2006-01-02T15:04:05Z07:00"}}">{{.At.Format "2006-01-02 15:04:05 MST"}}</time></td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="text-gray-600">No readings recorded.</p>
+{{end}}
+<h2 class="mt-6 mb-2 text-lg font-semibold">Details</h2>
+<pre class="overflow-auto rounded-md bg-gray-100 p-3 text-sm">{{.Details}}</pre>
+{{end}}

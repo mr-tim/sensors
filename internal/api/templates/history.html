@@ -1,13 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sensors</title>
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.5"></script>
-</head>
-<body class="mx-auto max-w-4xl p-4 font-sans">
-<nav class="space-x-4"><a class="text-blue-700 hover:underline" href="/">History</a><a class="text-blue-700 hover:underline" href="/devices">Devices</a></nav>
+{{define "header"}}
 <header class="flex items-center justify-between">
   <h1 class="text-2xl font-semibold">Sensor history</h1>
   <label>Range
@@ -19,12 +10,16 @@
     </select>
   </label>
 </header>
-<p id="error" class="text-red-700"></p>
+{{end}}
+
+{{define "content"}}
 <h2 class="mt-8 text-lg font-semibold">Temperature (°C)</h2>
 <div class="relative h-80"><canvas id="temperature"></canvas></div>
 <h2 class="mt-8 text-lg font-semibold">Humidity (%)</h2>
 <div class="relative h-80"><canvas id="humidity"></canvas></div>
+{{end}}
 
+{{define "scripts"}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
@@ -120,5 +115,4 @@ new EventSource('/api/events').addEventListener('reading', () => {
   reloadTimer = setTimeout(load, 500);
 });
 </script>
-</body>
-</html>
+{{end}}
