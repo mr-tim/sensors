@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -54,6 +55,9 @@ type Reading struct {
 // Store persists sensor readings to postgres.
 type Store struct {
 	pool *pgxpool.Pool
+
+	mu   sync.Mutex
+	subs map[chan struct{}]struct{}
 }
 
 func NewStore(ctx context.Context, dsn string) (*Store, error) {
@@ -71,12 +75,44 @@ func NewStore(ctx context.Context, dsn string) (*Store, error) {
 // Insert stores a reading. Devices occasionally resend the same
 // measurement, so duplicates on (device, kind, time) are ignored.
 func (s *Store) Insert(ctx context.Context, r Reading) error {
-	_, err := s.pool.Exec(ctx,
+	tag, err := s.pool.Exec(ctx,
 		`INSERT INTO readings (device_id, kind, recorded_at, value)
 		 VALUES ($1, $2, $3, $4)
 		 ON CONFLICT DO NOTHING`,
 		r.DeviceID, r.Kind, r.RecordedAt, r.Value)
+	if err == nil && tag.RowsAffected() > 0 {
+		s.notify()
+	}
 	return err
+}
+
+// Subscribe returns a channel that receives a signal whenever a new
+// reading is stored, and a function to cancel the subscription. Signals
+// are coalesced: a slow receiver sees at most one pending signal.
+func (s *Store) Subscribe() (<-chan struct{}, func()) {
+	ch := make(chan struct{}, 1)
+	s.mu.Lock()
+	if s.subs == nil {
+		s.subs = make(map[chan struct{}]struct{})
+	}
+	s.subs[ch] = struct{}{}
+	s.mu.Unlock()
+	return ch, func() {
+		s.mu.Lock()
+		delete(s.subs, ch)
+		s.mu.Unlock()
+	}
+}
+
+func (s *Store) notify() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for ch := range s.subs {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	}
 }
 
 // Device is a registered eWeLink device.

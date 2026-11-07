@@ -85,6 +85,7 @@ async function load() {
       if (r.kind !== kind) continue;
       if (!byDevice.has(r.deviceId)) byDevice.set(r.deviceId, {
         label: r.device,
+        deviceId: r.deviceId,
         data: [],
         borderColor: colours.get(r.deviceId),
         backgroundColor: colours.get(r.deviceId),
@@ -103,7 +104,13 @@ async function load() {
         borderDash: ctx => ctx.p1DataIndex === ds.data.length - 1 ? [6, 6] : undefined,
       };
     }
-    charts[kind].data.datasets = datasets;
+    // Keep series the user hid via the legend hidden across refreshes.
+    const chart = charts[kind];
+    const hidden = new Set(chart.data.datasets
+      .filter((_, i) => !chart.isDatasetVisible(i))
+      .map(ds => ds.deviceId));
+    for (const ds of datasets) ds.hidden = hidden.has(ds.deviceId);
+    chart.data.datasets = datasets;
     charts[kind].update();
   }
 }
@@ -112,6 +119,14 @@ for (const kind of ['temperature', 'humidity']) charts[kind] = makeChart(kind);
 document.getElementById('range').addEventListener('change', load);
 load();
 setInterval(load, 60000);
+
+// Reload when the server stores a new reading. A single device message
+// can store several readings, so wait briefly and reload once.
+let reloadTimer;
+new EventSource('/api/events').addEventListener('reading', () => {
+  clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(load, 500);
+});
 </script>
 </body>
 </html>

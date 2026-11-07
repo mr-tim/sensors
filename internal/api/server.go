@@ -64,6 +64,7 @@ func (s *Server) Run() error {
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /devices", s.handleDevicesPage)
 	mux.HandleFunc("GET /api/readings", s.handleReadings)
+	mux.HandleFunc("GET /api/events", s.handleEvents)
 	mux.HandleFunc("GET /api/devices", s.handleDevices)
 	mux.HandleFunc("POST /api/devices/refresh", s.handleRefreshDevices)
 	mux.HandleFunc("GET /api/devices/{id}", s.handleDevice)
@@ -281,4 +282,33 @@ func (s *Server) handleRefreshDevices(w http.ResponseWriter, r *http.Request) {
 	log.Printf("api: refreshed %d devices", n)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]int{"devices": n})
+}
+
+// handleEvents streams a server-sent "reading" event each time a new
+// reading is stored, so pages can refresh without polling.
+func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	flusher.Flush()
+
+	updates, cancel := s.db.Subscribe()
+	defer cancel()
+	keepAlive := time.NewTicker(30 * time.Second)
+	defer keepAlive.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-updates:
+			fmt.Fprint(w, "event: reading\ndata: {}\n\n")
+		case <-keepAlive.C:
+			fmt.Fprint(w, ": keep-alive\n\n")
+		}
+		flusher.Flush()
+	}
 }
