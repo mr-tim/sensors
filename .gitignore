@@ -1,5 +1,4 @@
 node_modules
 .idea
 token.json
-
-cmd/server/main/secrets.go
+.env

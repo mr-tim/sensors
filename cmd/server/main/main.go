@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/mr-tim/ewelink/internal/api"
+	"github.com/mr-tim/ewelink/internal/config"
 	"github.com/mr-tim/ewelink/internal/ewelink"
 	"github.com/mr-tim/ewelink/internal/readings"
 	"github.com/mr-tim/ewelink/internal/token"
@@ -17,9 +21,6 @@ import (
 const (
 	tokenFile = "token.json"
 	apiAddr   = ":8080"
-
-	// The postgres instance from docker-compose.yml; override with DATABASE_URL.
-	defaultDatabaseURL = "postgres://ewelink:ewelink@localhost:5432/ewelink?sslmode=disable"
 
 	// Refresh the access token a day before it expires (tokens last 30 days).
 	refreshMargin = 24 * time.Hour
@@ -30,6 +31,16 @@ const (
 )
 
 func main() {
+	// Load .env from the current directory if there is one; real
+	// environment variables take precedence over its values.
+	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		log.Fatalf("loading .env: %v", err)
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -37,13 +48,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("loading token store: %v", err)
 	}
-	client := ewelink.NewClient(appID, appSecret)
+	client := ewelink.NewClient(cfg.EwelinkAppID, cfg.EwelinkAppSecret)
 
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		dbURL = defaultDatabaseURL
-	}
-	db, err := readings.NewStore(ctx, dbURL)
+	db, err := readings.NewStore(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("connecting to postgres (is `docker compose up -d` running?): %v", err)
 	}
