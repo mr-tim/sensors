@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/mr-tim/ewelink/internal/api"
-	"github.com/mr-tim/ewelink/internal/config"
-	"github.com/mr-tim/ewelink/internal/ewelink"
-	"github.com/mr-tim/ewelink/internal/migrations"
-	"github.com/mr-tim/ewelink/internal/readings"
-	"github.com/mr-tim/ewelink/internal/token"
+	"github.com/mr-tim/sensors/internal/api"
+	"github.com/mr-tim/sensors/internal/config"
+	"github.com/mr-tim/sensors/internal/ewelink"
+	"github.com/mr-tim/sensors/internal/migrations"
+	"github.com/mr-tim/sensors/internal/readings"
+	"github.com/mr-tim/sensors/internal/token"
 )
 
 const (

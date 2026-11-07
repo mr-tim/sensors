@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: ewelink
-      POSTGRES_PASSWORD: ewelink
-      POSTGRES_DB: ewelink
+      POSTGRES_USER: sensors
+      POSTGRES_PASSWORD: sensors
+      POSTGRES_DB: sensors
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ewelink -d ewelink"]
+      test: ["CMD-SHELL", "pg_isready -U sensors -d sensors"]
       interval: 2s
       timeout: 2s
       retries: 15

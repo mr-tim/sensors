@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mr-tim/ewelink/internal/ewelink"
-	"github.com/mr-tim/ewelink/internal/readings"
-	"github.com/mr-tim/ewelink/internal/token"
+	"github.com/mr-tim/sensors/internal/ewelink"
+	"github.com/mr-tim/sensors/internal/readings"
+	"github.com/mr-tim/sensors/internal/token"
 )
 
 // ErrNotLoggedIn is returned by a RefreshFunc when there is no valid token.

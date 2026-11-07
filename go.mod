@@ -1,4 +1,4 @@
-module github.com/mr-tim/ewelink
+module github.com/mr-tim/sensors
 
 go 1.26.4
 
